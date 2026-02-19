@@ -1,0 +1,3 @@
+# Exclude tools/ from generated source archives (GitHub releases, git archive)
+tools/ export-ignore
+tools/** export-ignore
