@@ -1,0 +1,330 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>WiFi Setup</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Arial, sans-serif;
+      background: #f5f5f7;
+      margin: 0;
+      padding: 24px
+    }
+
+    .card {
+      max-width: 420px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      padding: 24px 18px 18px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .1)
+    }
+
+    .wifi-list {
+      margin: 0;
+      padding: 0;
+      list-style: none
+    }
+
+    .wifi-item {
+      background: #f9f9fa;
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      font-size: 17px;
+      cursor: pointer
+    }
+
+    .wifi-item.selected {
+      background: #e6f7ff;
+      border-color: #1f7a68
+    }
+
+    .wifi-row {
+      display: flex;
+      align-items: center
+    }
+
+    .ssid {
+      font-weight: 500
+    }
+
+    .signal-meta {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+      align-items: flex-end
+    }
+
+    .rssi-bar {
+      display: flex;
+      align-items: flex-end;
+      height: 20px;
+      width: 32px;
+      gap: 2px
+    }
+
+    .bar {
+      width: 5px;
+      border-radius: 2px 2px 0 0;
+      background: #bbb
+    }
+
+    .bar.on {
+      background: #1f7a68
+    }
+
+    .h1 {
+      height: 10px
+    }
+
+    .h2 {
+      height: 15px
+    }
+
+    .h3 {
+      height: 20px
+    }
+
+    .h4 {
+      height: 25px
+    }
+
+    .scan-btn {
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 0;
+      background: #1f7a68;
+      color: #fff;
+      font-weight: 600;
+      margin-bottom: 18px
+    }
+
+    .pw-section {
+      margin-top: 10px
+    }
+
+    .pw-input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #bbb;
+      font-size: 16px;
+      margin-bottom: 10px;
+      box-sizing: border-box
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      border: 0;
+      background: #1f7a68;
+      color: #fff;
+      font-weight: 600;
+      font-size: 17px
+    }
+
+    .note {
+      margin-top: 18px;
+      color: #555;
+      font-size: 13px;
+      text-align: center
+    }
+
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+    }
+    .footer a {
+      color: #888;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .footer a:visited { color: #888; }
+    .footer a:hover {
+      color: #888;
+      text-decoration: none;
+    }
+
+    .manual-section {
+      border: 1px solid #e5e5e5;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 18px;
+      background: #fafafa
+    }
+
+    .manual-header {
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #333
+    }
+
+    .manual-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 18px 0 12px;
+      font-size: 13px;
+      color: #777
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e5e5e5
+    }
+
+    .divider span {
+      padding: 0 10px
+    }
+
+    .wifi-empty {
+      text-align: center;
+      color: #888;
+      padding: 18px 0
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2 id="pageTitle">WiFi Setup</h2>
+    <form action="/" method="post">
+
+      <div class="manual-section">
+        <div class="manual-header">Manual Network</div>
+        <div class="manual-body">
+          <input class="pw-input" id="manualSsid" type="text" placeholder="SSID">
+          <input class="pw-input" id="manualPassword" type="password" placeholder="Password">
+          <button class="submit-btn" id="manualConnect" type="button">Connect</button>
+        </div>
+      </div>
+
+      <div class="divider"><span>Available Networks</span></div>
+
+      <ul class="wifi-list" id="wifiList"></ul>
+      <button class="scan-btn" id="scan" type="button">Refresh</button>
+    </form>
+
+    <div class="note"></div>
+    <div class="footer"><a href="https://github.com/mvoss96/SimpleWifiManager" target="_blank" rel="noopener">SimpleWifiManager</a></div>
+  </div>
+
+  <script>
+    const scanBtn = document.getElementById("scan");
+    const wifiList = document.getElementById("wifiList");
+    const form = document.forms[0];
+    const manualConnectBtn = document.getElementById("manualConnect");
+    const manualSsidInput = document.getElementById("manualSsid");
+    const manualPasswordInput = document.getElementById("manualPassword");
+    const pageTitle = document.getElementById("pageTitle");
+
+    let aps = [];
+    let selectedAp = null;
+
+    async function loadCustomTitle() {
+      try {
+        const res = await fetch("/custom");
+        const data = await res.json();
+        if (data.title) {
+          pageTitle.textContent = data.title;
+        }
+      } catch (e) {
+        console.log("Could not load custom title:", e);
+      }
+    }
+
+    function rssiBars(rssi) {
+      let bars = 0; if (rssi >= -50) bars = 4; else if (rssi >= -60) bars = 3; else if (rssi >= -70) bars = 2; else if (rssi >= -80) bars = 1;
+      const wrap = document.createElement("span"); wrap.className = "rssi-bar";
+      for (let i = 1; i <= 4; i++) {
+        const b = document.createElement("span"); b.className = "bar h" + i + (i <= bars ? " on" : ""); wrap.appendChild(b);
+      }
+      return wrap;
+    }
+
+    function renderAps(list) {
+      wifiList.innerHTML = "";
+      if (!list.length) { const li = document.createElement("li"); li.className = "wifi-empty"; li.textContent = "No networks found"; wifiList.appendChild(li); return; }
+
+      list.forEach(a => {
+        const ap = { ssid: a[0], rssi: a[1], enc: a[2] };
+        const li = document.createElement("li");
+        li.className = "wifi-item" + (selectedAp?.ssid === ap.ssid ? " selected" : "");
+        li.tabIndex = 0;
+
+        const row = document.createElement("div"); row.className = "wifi-row";
+        const ssidSpan = document.createElement("span"); ssidSpan.className = "ssid"; ssidSpan.textContent = ap.ssid || "(hidden)";
+        const meta = document.createElement("span"); meta.className = "signal-meta";
+        if (ap.enc !== 0) { const lock = document.createElement("span"); lock.textContent = "🔒"; meta.appendChild(lock); }
+        meta.appendChild(rssiBars(ap.rssi));
+
+        row.appendChild(ssidSpan); row.appendChild(meta); li.appendChild(row);
+
+        if (selectedAp?.ssid === ap.ssid) {
+          const pwSection = document.createElement("div"); pwSection.className = "pw-section";
+          if (ap.enc !== 0) { const pw = document.createElement("input"); pw.className = "pw-input"; pw.type = "password"; pw.id = "passwordInput"; pw.placeholder = "Password"; pwSection.appendChild(pw); }
+          const btn = document.createElement("button"); btn.className = "submit-btn"; btn.type = "submit"; btn.textContent = "Connect"; pwSection.appendChild(btn);
+          li.appendChild(pwSection);
+        }
+
+        li.onclick = e => { if (e.target.closest(".pw-section")) return; selectedAp = selectedAp?.ssid === ap.ssid ? null : ap; renderAps(aps); };
+        wifiList.appendChild(li);
+      });
+    }
+
+    async function runScan() {
+      scanBtn.disabled = true; scanBtn.hidden = true; selectedAp = null;
+      wifiList.innerHTML = '<li class="wifi-empty">Scanning...</li>';
+      try {
+        const res = await fetch("/scan");
+        const data = await res.json();
+        aps = data || [];
+      } catch { aps = []; }
+      renderAps(aps); scanBtn.disabled = false; scanBtn.hidden = false;
+    }
+
+    manualConnectBtn.onclick = () => {
+      const ssid = manualSsidInput.value.trim(); if (!ssid) { alert("Enter SSID"); return; }
+      setHidden("ssid", ssid);
+      if (manualPasswordInput.value) setHidden("password", manualPasswordInput.value);
+      form.submit();
+    };
+
+    form.addEventListener("submit", e => {
+      if (!selectedAp) return;
+      const ssid = selectedAp.ssid;
+      const pw = document.getElementById("passwordInput");
+      const password = pw ? pw.value : "";
+      if (selectedAp.enc !== 0 && !password) { alert("Enter password"); e.preventDefault(); return; }
+      setHidden("ssid", ssid); if (password) setHidden("password", password);
+    });
+
+    function setHidden(name, value) {
+      let input = form.querySelector(`input[name="${name}"]`);
+      if (!input) { input = document.createElement("input"); input.type = "hidden"; input.name = name; form.appendChild(input); }
+      input.value = value;
+    }
+
+    scanBtn.onclick = runScan;
+    loadCustomTitle();
+    runScan();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "html-to-cpp-converter",
+  "version": "1.0.0",
+  "description": "Convert HTML to C++ header with minification (both normal and gzip versions)",
+  "main": "convert_html.js",
+  "scripts": {
+    "convert": "node convert_html.js"
+  },
+  "dependencies": {
+    "html-minifier": "^4.0.0",
+    "terser": "^5.46.0"
+  }
+}
