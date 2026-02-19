@@ -37,6 +37,8 @@ void loop() {
 }
 ```
 
+![Captive portal screenshot](assets/screenshot.png)
+
 **Key API (short)**
 
 - `begin(const char *apName = "WiFi-Setup")` — Starts the manager; attempts STA connection or starts AP.

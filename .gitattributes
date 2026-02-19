@@ -1,3 +1,7 @@
 # Exclude tools/ from generated source archives (GitHub releases, git archive)
 tools/ export-ignore
 tools/** export-ignore
+
+# Exclude assets (screenshots) from generated source archives
+assets/ export-ignore
+assets/** export-ignore
