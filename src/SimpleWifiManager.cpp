@@ -1,4 +1,5 @@
 #include "SimpleWifiManager.h"
+
 #include <esp_log.h>
 #include <algorithm>
 #include <vector>
@@ -26,7 +27,7 @@ void SimpleWifiManager::begin(const char *apName)
     mPrefs.begin(mPrefKey, false);
     loadCredentials();
 
-    WiFi.setAutoReconnect(true);
+
 
     if (mSsid.length() > 0)
     {
@@ -62,6 +63,7 @@ void SimpleWifiManager::stop()
 
     mConnectStartTime = 0;
     mLastStaAttemptTime = 0;
+    mApStaStartTime = 0;
     mOfflineTime = 0;
 
     mPrefs.end();
@@ -80,6 +82,17 @@ void SimpleWifiManager::setOfflineTimeout(uint32_t timeoutMs)
 void SimpleWifiManager::setRetryInterval(uint32_t intervalMs)
 {
     mStaRetryInterval = intervalMs;
+}
+
+void SimpleWifiManager::setApAutoReconnect(bool enabled)
+{
+    mApAutoReconnectEnabled = enabled;
+    WiFi.setAutoReconnect(enabled);
+}
+
+void SimpleWifiManager::setApFallback(bool enabled)
+{
+    mApFallbackEnabled = enabled;
 }
 
 void SimpleWifiManager::handlePortal()
@@ -228,6 +241,7 @@ void SimpleWifiManager::startApMode()
 {
     mState = State::ApMode;
     log_i("SMW: AP mode: %s", mApName.c_str());
+    mApStaStartTime = 0;
     if (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA)
     {
         // Ensure STA is stopped before we reconfigure in AP/STA mode.
@@ -276,6 +290,7 @@ void SimpleWifiManager::startStationConnect()
     WiFi.STA.connect(mSsid.c_str(), mPass.c_str());
     mConnectStartTime = millis();
     mLastStaAttemptTime = mConnectStartTime;
+    mApStaStartTime = 0;
 
     startWorkerTask();
 }
@@ -330,8 +345,11 @@ void SimpleWifiManager::workerTask(void *parameter)
             }
             else if (now - self->mConnectStartTime >= self->mConnectTimeout)
             {
-                log_i("SMW: STA connect timeout, falling back to AP");
-                self->startApMode();
+                if (self->mApFallbackEnabled)
+                {
+                    log_i("SMW: STA connect timeout, falling back to AP");
+                    self->startApMode();
+                }
             }
             break;
         case State::Connected:
@@ -343,8 +361,11 @@ void SimpleWifiManager::workerTask(void *parameter)
                 }
                 else if (now - self->mOfflineTime >= self->mOfflineTimeout)
                 {
-                    log_i("SMW: STA offline, falling back to AP");
-                    self->startApMode();
+                    if (self->mApFallbackEnabled)
+                    {
+                        log_i("SMW: STA offline, falling back to AP");
+                        self->startApMode();
+                    }
                 }
             }
             else
@@ -355,6 +376,20 @@ void SimpleWifiManager::workerTask(void *parameter)
         case State::ApMode:
             self->mDnsServer.processNextRequest();
             self->mServer.handleClient();
+            if (self->mApAutoReconnectEnabled && self->mSsid.length() > 0 && now - self->mLastStaAttemptTime >= self->mStaRetryInterval)
+            {
+                // Retry STA connection while keeping the AP/captive portal alive.
+                WiFi.mode(WIFI_AP_STA);
+                WiFi.STA.connect(self->mSsid.c_str(), self->mPass.c_str());
+                self->mLastStaAttemptTime = now;
+                self->mApStaStartTime = now;
+            }
+            if (self->mApStaStartTime != 0 && now - self->mApStaStartTime >= self->mConnectTimeout && WiFi.status() != WL_CONNECTED)
+            {
+                // Fall back to AP-only to reduce power and avoid AP_STA linger.
+                WiFi.mode(WIFI_AP);
+                self->mApStaStartTime = 0;
+            }
             break;
         default:
             break;
@@ -381,5 +416,8 @@ void SimpleWifiManager::saveCredentials()
 
 void SimpleWifiManager::resetCredentials()
 {
+    log_i("SMW: Resetting credentials");
     mPrefs.clear();
+    delay(100);
+    ESP.restart();
 }
