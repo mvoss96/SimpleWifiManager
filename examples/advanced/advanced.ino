@@ -6,6 +6,7 @@ constexpr uint8_t kResetPin = 0; // Boot button on many ESP32 boards
 
 void setup()
 {
+    Serial.begin(115200);
     pinMode(kResetPin, INPUT_PULLUP);
 
     swm.customize("Device WiFi Setup"); // Custom title for the captive portal page.
@@ -23,4 +24,6 @@ void loop()
         swm.resetCredentials();
         delay(500);
     }
+    Serial.println("Wifi status: " + String((swm.isConnected() ? "Connected" : "Not Connected")));
+    delay(1000);
 }
