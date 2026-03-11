@@ -421,3 +421,8 @@ void SimpleWifiManager::resetCredentials()
     delay(100);
     ESP.restart();
 }
+
+bool SimpleWifiManager::isConnected() const
+{
+    return mState == State::Connected;
+}

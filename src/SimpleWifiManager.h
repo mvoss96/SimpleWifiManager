@@ -29,6 +29,8 @@ public:
     void setApFallback(bool enabled);
     // Clear stored WiFi credentials in persistent storage.
     void resetCredentials();
+    // Check if current State is connected
+    bool isConnected() const;
 
 private:
     enum class State
