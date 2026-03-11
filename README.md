@@ -2,7 +2,7 @@
 
 SimpleWifiManager is a small, easy-to-use WiFi manager library for ESP32 (Arduino framework). It provides automatic reconnect, persistent credential storage, and a captive-portal fallback (Access Point + configuration page) when no saved network is available.
 
-The Library is validated with [arduino-esp32](https://github.com/espressif/arduino-esp32) 3.3.7
+The Library is validated with [arduino-esp32](https://github.com/espressif/arduino-esp32) 3.3.7 and should work with ArduinoIDE, platformIO, as well as with Arduino as an ESP-IDF component.
 
 **Goal**
 
