@@ -1,0 +1,30 @@
+{
+  "name": "SimpleWifiManager",
+  "version": "0.2.0",
+  "description": "Simple captive-portal Wi-Fi manager for ESP32 (Arduino framework). Automatic STA connection with reconnects, AP fallback with embedded captive portal UI, Preferences-backed credential storage, non-blocking operation.",
+  "homepage": "https://github.com/mvoss96/SimpleWifiManager",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mvoss96/SimpleWifiManager.git"
+  },
+  "authors": [
+    {
+      "name": "Marcus Voss",
+      "url": "https://github.com/mvoss96",
+      "maintainer": true
+    }
+  ],
+  "keywords": "wifi, wifimanager, captive-portal, esp32, arduino, access-point, provisioning",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "headers": "SimpleWifiManager.h",
+  "export": {
+    "exclude": [
+      ".github",
+      ".gitattributes",
+      ".gitignore",
+      "tools"
+    ]
+  }
+}
