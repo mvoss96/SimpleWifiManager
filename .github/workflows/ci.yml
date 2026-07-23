@@ -28,8 +28,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: arduino/arduino-lint-action@v2
         with:
-          # submit = pre-registration checks (name must NOT be in the index
-          # yet). Switch to `update` once the library is accepted into the
-          # Library Manager index, or rule LP018 fails in the wrong direction.
-          library-manager: submit
+          # update = checks for a library already in the Library Manager
+          # index (accepted 2026-07-23 via arduino/library-registry#8802).
+          library-manager: update
           compliance: strict
