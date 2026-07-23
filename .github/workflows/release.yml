@@ -1,0 +1,47 @@
+name: Release
+
+# On every version tag: verify the tag matches both library manifests, then
+# publish a GitHub release with auto-generated notes and push the package to
+# the PlatformIO registry. A mismatching tag produces a red run and NO
+# release - fix the manifests, delete and re-tag.
+on:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify tag matches manifest versions
+        run: |
+          TAG=${GITHUB_REF_NAME#v}
+          PROPS=$(grep '^version=' library.properties | cut -d= -f2)
+          JSON=$(python3 -c "import json; print(json.load(open('library.json'))['version'])")
+          echo "tag=$TAG library.properties=$PROPS library.json=$JSON"
+          test "$TAG" = "$PROPS"
+          test "$TAG" = "$JSON"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Publish to PlatformIO registry
+        # Authenticated via the PLATFORMIO_AUTH_TOKEN repository secret
+        # (generate with `pio account token`, store with `gh secret set`).
+        env:
+          PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
+        run: |
+          pip install platformio
+          pio pkg publish --no-interactive

@@ -1,0 +1,50 @@
+name: Examples
+
+# Compile-checks every example against the real esp32 Arduino core, so
+# examples cannot silently rot. Paths-filtered: runs only when library code,
+# examples or this workflow change.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "src/**"
+      - "examples/**"
+      - ".github/workflows/examples.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "examples/**"
+      - ".github/workflows/examples.yml"
+
+concurrency:
+  group: examples-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  arduino:
+    # arduino-cli is the Arduino IDE's build engine, so this job tests the
+    # authentic Arduino path: the repo installed as a library (src/ layout via
+    # library.properties) with Espressif's current esp32 core from the board
+    # manager index.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [basic, advanced]
+    env:
+      ESP32_INDEX: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    steps:
+      - uses: actions/checkout@v5
+      - uses: arduino/setup-arduino-cli@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino-cli-esp32-${{ runner.os }}
+      - name: Install esp32 core
+        run: |
+          arduino-cli core update-index --additional-urls "$ESP32_INDEX"
+          arduino-cli core install esp32:esp32 --additional-urls "$ESP32_INDEX"
+          mkdir -p ~/Arduino/libraries
+          cp -r "$GITHUB_WORKSPACE" ~/Arduino/libraries/SimpleWifiManager
+      - name: Build example
+        run: arduino-cli compile --fqbn esp32:esp32:esp32 --warnings more examples/${{ matrix.example }}
