@@ -27,13 +27,19 @@ jobs:
           test "$TAG" = "$PROPS"
           test "$TAG" = "$JSON"
       - name: Create GitHub release
+        # Idempotent so a partially failed run can be retried with
+        # `gh run rerun --failed` without tripping over the existing release.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --verify-tag \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists, skipping"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -44,4 +50,9 @@ jobs:
           PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_AUTH_TOKEN }}
         run: |
           pip install platformio
-          pio pkg publish --no-interactive
+          TAG=${GITHUB_REF_NAME#v}
+          if pio pkg show "mvoss96/SimpleWifiManager@$TAG" >/dev/null 2>&1; then
+            echo "Version $TAG already in the registry, skipping"
+          else
+            pio pkg publish --no-interactive
+          fi
